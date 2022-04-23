@@ -18,4 +18,8 @@ func hashBlock(block *Block) ([]byte, error) {
 	return SHA256(blockBytes), nil
 }
 
+func isValidBlock(block *Block) bool {
+	return true
+}
+
 // https://gist.github.com/miguelmota/3dee93d8b7340e33fc474eb3abb7d450
