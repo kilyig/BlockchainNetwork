@@ -13,6 +13,7 @@ type Block struct {
 	Index     uint64
 	PrevHash  []byte
 	Timestamp time.Time
+	Nonce     uint64
 	Data      string
 }
 
