@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package blockchain;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "blockchainnetwork/blockchain/proto";
+
+message Block {
+    uint64 index = 1;
+    bytes prev_hash = 2;
+    google.protobuf.Timestamp timestamp = 3;
+    uint64 nonce = 4;
+    string data = 5;
+}
+
+message GetBlocksRequest {
+    uint64 first_block_index = 1;
+}
+
+message GetBlocksResponse {
+    repeated Block blocks = 1;
+}
+
+message AppendBlocksRequest {
+    repeated Block blocks = 1;
+}
+
+message AppendBlocksResponse {
+    uint64 last_block_hash = 1;
+    bool success = 2;
+}
+
+service BlockchainFullNode {
+    rpc GetBlocks(GetBlocksRequest) returns (GetBlocksResponse);
+    rpc AppendBlocks(AppendBlocksRequest) returns (AppendBlocksResponse);
+}
