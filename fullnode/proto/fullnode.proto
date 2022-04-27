@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package blockchain;
+package fullnode;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "blockchainnetwork/blockchain/proto";
+option go_package = "blockchainnetwork/fullnode/proto";
 
 message Block {
     uint64 index = 1;
@@ -31,7 +31,14 @@ message AppendBlocksResponse {
     bool success = 2;
 }
 
-service BlockchainFullNode {
+message GetLastBlockRequest {}
+
+message GetLastBlockResponse {
+    Block last_block = 1;
+}
+
+service FullNode {
     rpc GetBlocks(GetBlocksRequest) returns (GetBlocksResponse);
     rpc AppendBlocks(AppendBlocksRequest) returns (AppendBlocksResponse);
+    rpc GetLastBlock(GetLastBlockRequest) returns (GetLastBlockResponse);
 }
