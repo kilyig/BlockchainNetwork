@@ -20,7 +20,7 @@ func hashBlock(block *Block) []byte {
 }
 
 // checks if the hash of block is less than or equal to the threshold
-func hashSatisfiesThreshold(block *Block, threshold []byte) bool {
+func HashSatisfiesThreshold(block *Block, threshold []byte) bool {
 	return bytes.Compare(hashBlock(block), threshold) != 1
 }
 
