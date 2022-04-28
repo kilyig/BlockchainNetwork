@@ -3,6 +3,9 @@ package blockchain
 import (
 	"bytes"
 	"time"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type Blockchain struct {
@@ -29,6 +32,13 @@ func MakeBlockchain() *Blockchain {
 	return &Blockchain{
 		Blocks: blocks,
 	}
+}
+
+func (bc *Blockchain) GetBlocks(firstBlockIndex uint64) ([]*Block, error) {
+	if bc.lastBlock().Index < firstBlockIndex {
+		return nil, status.Error(codes.OutOfRange, "this blockchain does not have a block with the requested index.")
+	}
+	return bc.Blocks[firstBlockIndex:], nil
 }
 
 func (bc *Blockchain) lastBlock() *Block {
