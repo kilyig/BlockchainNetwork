@@ -13,7 +13,7 @@ type Node struct {
 	// node identification
 	name string
 
-	// the nodes that this node is in communication with
+	// connections to nodes that this node is in communication with
 	nodePool NodeClientPool
 
 	// this node's blockchain

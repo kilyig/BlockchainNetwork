@@ -9,7 +9,8 @@ import (
 )
 
 type Blockchain struct {
-	Blocks []*Block
+	Blocks    []*Block
+	threshold []byte
 }
 
 type Block struct {
@@ -45,7 +46,8 @@ func (bc *Blockchain) LastBlock() *Block {
 	return bc.Blocks[len(bc.Blocks)]
 }
 
-/* For a block to be added to the blockchain,
+/*
+ * For a block to be added to the blockchain,
  * 1) its index should be one more than the last block's index
  * 2) its "prevHash" field should be equal to the last block's hash
  * 3) its hash should be valid

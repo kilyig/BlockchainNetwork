@@ -1,12 +1,15 @@
 package node
 
 import (
+	"context"
 	"sync"
 
 	"blockchainnetwork/node/proto"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 )
 
 type NodeClientPool interface {
@@ -14,11 +17,11 @@ type NodeClientPool interface {
 }
 
 type GRPCNodeClientPool struct {
-	mutex   sync.RWMutex
+	mu      sync.RWMutex
 	clients map[string]proto.NodeClient
 }
 
-func MakeGRPCClientPool(nodes []string) *GRPCNodeClientPool {
+func MakeGRPCNodeClientPool(nodes []string) *GRPCNodeClientPool {
 
 	gRPCClientPool := &GRPCNodeClientPool{
 		clients: make(map[string]proto.NodeClient),
@@ -26,7 +29,7 @@ func MakeGRPCClientPool(nodes []string) *GRPCNodeClientPool {
 
 	// set up connections with the nodes with Dial()
 	for _, node := range nodes {
-		client, err := makeNodeClient(node)
+		client, err := makeGRPCNodeClient(node)
 		if err != nil {
 			return nil
 		}
@@ -36,7 +39,7 @@ func MakeGRPCClientPool(nodes []string) *GRPCNodeClientPool {
 	return gRPCClientPool
 }
 
-func makeNodeClient(addr string) (proto.NodeClient, error) {
+func makeGRPCNodeClient(addr string) (proto.NodeClient, error) {
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
@@ -46,3 +49,16 @@ func makeNodeClient(addr string) (proto.NodeClient, error) {
 	}
 	return proto.NewNodeClient(channel), nil
 }
+
+func (cp *GRPCNodeClientPool) GetClient(nodeName string) (proto.NodeClient, error) {
+	cp.mu.RLock()
+	defer cp.mu.RUnlock()
+
+	client, ok := cp.clients[nodeName]
+	if !ok {
+		return nil, status.Error(codes.NotFound, "error while getting the client.")
+	}
+	return client, nil
+}
+
+func (cp *GRPCNodeClient) GetBlocks(ctx context.Context, in *GetBlocksRequest, opts ...grpc.CallOption) (*GetBlocksResponse, error)
