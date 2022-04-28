@@ -2,7 +2,8 @@ package node
 
 import (
 	"blockchainnetwork/blockchain"
-	"blockchainnetwork/node/proto"
+	bc "blockchainnetwork/blockchain"
+	proto "blockchainnetwork/node/proto"
 	"context"
 
 	"google.golang.org/grpc"
@@ -32,14 +33,47 @@ func MakeNode(name string, nodePool NodeClientPool) *Node {
 	return node
 }
 
-func (n *Node) GetBlocks(ctx context.Context, in *proto.GetBlocksRequest, opts ...grpc.CallOption) (*proto.GetBlocksResponse, error) {
-	panic("AAAA")
+func (n *Node) GetBlocks(ctx context.Context, req *proto.GetBlocksRequest, opts ...grpc.CallOption) (*proto.GetBlocksResponse, error) {
+	blocks, err := n.blockchain.GetBlocks(req.GetFirstBlockIndex())
+
+	if err != nil {
+		return &proto.GetBlocksResponse{
+			Blocks: nil,
+		}, err
+	}
+
+	return &proto.GetBlocksResponse{
+		Blocks: BlockchainBlocksToProtoBlocks(blocks),
+	}, nil
 }
 
-func (n *Node) AppendBlocks(ctx context.Context, in *proto.AppendBlocksRequest, opts ...grpc.CallOption) (*proto.AppendBlocksResponse, error) {
-	panic("AAAA")
+func (n *Node) isValidNextBlock(block *proto.Block) bool {
+	return n.blockchain.IsValidNextBlock(ProtoBlockToBlockchainBlock(block))
 }
 
-func (n *Node) GetLastBlock(ctx context.Context, in *proto.GetLastBlockRequest, opts ...grpc.CallOption) (*proto.GetLastBlockResponse, error) {
-	panic("AAAA")
+func (n *Node) AppendBlocks(ctx context.Context, req *proto.AppendBlocksRequest, opts ...grpc.CallOption) (*proto.AppendBlocksResponse, error) {
+
+	added_all_blocks := true
+	for _, newBlock := range req.GetBlocks() {
+		if n.isValidNextBlock(newBlock) {
+			n.blockchain.AddBlock(ProtoBlockToBlockchainBlock(newBlock))
+		} else {
+			added_all_blocks = false
+			break
+		}
+	}
+
+	newLastBlock := n.blockchain.LastBlock()
+	return &proto.AppendBlocksResponse{
+		LastBlockIndex: newLastBlock.Index,
+		LastBlockHash:  bc.HashBlock(newLastBlock),
+		Success:        added_all_blocks,
+	}, nil
+
+}
+
+func (n *Node) GetLastBlock(ctx context.Context, req *proto.GetLastBlockRequest, opts ...grpc.CallOption) (*proto.GetLastBlockResponse, error) {
+	return &proto.GetLastBlockResponse{
+		LastBlock: BlockchainBlockToProtoBlock(n.blockchain.LastBlock()),
+	}, nil
 }

@@ -2,7 +2,10 @@ package blockchain
 
 import (
 	"bytes"
-	"time"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Blockchain struct {
@@ -12,7 +15,7 @@ type Blockchain struct {
 type Block struct {
 	Index     uint64
 	PrevHash  []byte
-	Timestamp time.Time
+	Timestamp *timestamppb.Timestamp // TODO: will be changed to time.Time in the future
 	Nonce     uint64
 	Data      string
 }
@@ -23,7 +26,7 @@ func MakeBlockchain() *Blockchain {
 	blocks = append(blocks, &Block{
 		Index:     0,
 		PrevHash:  make([]byte, 32), // SHA256 outputs have 32 bytes
-		Timestamp: time.Now(),
+		Timestamp: timestamppb.Now(),
 		Data:      "",
 	})
 	return &Blockchain{
@@ -31,7 +34,14 @@ func MakeBlockchain() *Blockchain {
 	}
 }
 
-func (bc *Blockchain) lastBlock() *Block {
+func (bc *Blockchain) GetBlocks(firstBlockIndex uint64) ([]*Block, error) {
+	if bc.LastBlock().Index < firstBlockIndex {
+		return nil, status.Error(codes.OutOfRange, "this blockchain does not have a block with the requested index.")
+	}
+	return bc.Blocks[firstBlockIndex:], nil
+}
+
+func (bc *Blockchain) LastBlock() *Block {
 	return bc.Blocks[len(bc.Blocks)]
 }
 
@@ -40,23 +50,23 @@ func (bc *Blockchain) lastBlock() *Block {
  * 2) its "prevHash" field should be equal to the last block's hash
  * 3) its hash should be valid
  */
-func (bc *Blockchain) isValidNextBlock(candidateBlock *Block) bool {
-	lastBlock := bc.lastBlock()
+func (bc *Blockchain) IsValidNextBlock(candidateBlock *Block) bool {
+	lastBlock := bc.LastBlock()
 
 	if candidateBlock.Index == lastBlock.Index+1 &&
-		bytes.Equal(candidateBlock.PrevHash, hashBlock(lastBlock)) &&
-		bc.hasValidHash(candidateBlock) {
+		bytes.Equal(candidateBlock.PrevHash, HashBlock(lastBlock)) &&
+		bc.HasValidHash(candidateBlock) {
 		return true
 	}
 	return false
 }
 
-func (bc *Blockchain) hasValidHash(block *Block) bool {
+func (bc *Blockchain) HasValidHash(block *Block) bool {
 	return true
 }
 
-func (bc *Blockchain) addBlock(newBlock *Block) (uint64, bool) {
-	if bc.isValidNextBlock(newBlock) {
+func (bc *Blockchain) AddBlock(newBlock *Block) (uint64, bool) {
+	if bc.IsValidNextBlock(newBlock) {
 		bc.Blocks = append(bc.Blocks, newBlock)
 		return uint64(len(bc.Blocks)), true
 	}

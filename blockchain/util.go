@@ -11,7 +11,7 @@ func SHA256(data []byte) []byte {
 	return hash[:]
 }
 
-func hashBlock(block *Block) []byte {
+func HashBlock(block *Block) []byte {
 	blockBytes, err := json.Marshal(block)
 	if err != nil {
 		return nil
@@ -21,7 +21,7 @@ func hashBlock(block *Block) []byte {
 
 // checks if the hash of block is less than or equal to the threshold
 func HashSatisfiesThreshold(block *Block, threshold []byte) bool {
-	return bytes.Compare(hashBlock(block), threshold) != 1
+	return bytes.Compare(HashBlock(block), threshold) != 1
 }
 
 // https://gist.github.com/miguelmota/3dee93d8b7340e33fc474eb3abb7d450

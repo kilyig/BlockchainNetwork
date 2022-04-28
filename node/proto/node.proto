@@ -27,8 +27,9 @@ message AppendBlocksRequest {
 }
 
 message AppendBlocksResponse {
-    uint64 last_block_hash = 1;
-    bool success = 2;
+    uint64 last_block_index = 1;
+    bytes last_block_hash = 2;
+    bool success = 3;
 }
 
 message GetLastBlockRequest {}

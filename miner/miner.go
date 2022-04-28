@@ -2,39 +2,33 @@ package miner
 
 import (
 	bc "blockchainnetwork/blockchain"
-	"blockchainnetwork/fullnode/proto"
-	"time"
+	node "blockchainnetwork/node"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Miner struct {
 	// miner identification
 	name string
 
-	// the full nodes that the miner is in communication with
-	nodes map[string]proto.NewFullNodeClient
+	// the nodes that the miner is in communication with
+	nodePool node.NodeClientPool
 
 	// data necessary to mine the next block
+	dataForMining *DataForMining
+}
+
+// data necessary to mine the next block
+type DataForMining struct {
 	lastBlock *bc.Block
 	threshold []byte
 }
 
-func MakeMiner(name string, nodes []string) *Miner {
+func MakeMiner(name string, nodePool node.NodeClientPool) *Miner {
 
 	miner := &Miner{
-		name:  name,
-		nodes: make(map[string]proto.NewFullNodeClient, len(nodes)),
-	}
-
-	// TODO: set up connections with the nodes with Dial()
-	for _, node := range nodes {
-		client, err := makeFullNodeClient(node)
-		if err != nil {
-			return nil
-		}
-		miner.nodes[node] = client
+		name:     name,
+		nodePool: nodePool,
 	}
 
 	// TODO: start the background routine to check for new blocks in target blockchains
@@ -42,28 +36,25 @@ func MakeMiner(name string, nodes []string) *Miner {
 	return miner
 }
 
-func makeFullNodeClient(addr string) (proto.NewFullNodeClient, error) {
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-
-	channel, err := grpc.Dial(addr, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return proto.NewFullNodeClient(channel), nil
-}
-
-func (miner *Miner) mine() {
-	minedBlock := &bc.Block{
-		Index:     miner.lastBlock.Index + 1,
-		PrevHash:  miner.lastBlock.PrevHash,
-		Timestamp: time.Now(),
+func (miner *Miner) firstCandidateBlock() *bc.Block {
+	return &bc.Block{
+		Index:     miner.dataForMining.lastBlock.Index + 1,
+		PrevHash:  miner.dataForMining.lastBlock.PrevHash,
+		Timestamp: timestamppb.Now(),
 		Nonce:     uint64(0),
 		Data:      "Block mined by " + miner.name,
 	}
+}
 
-	for !bc.HashSatisfiesThreshold(minedBlock, miner.threshold) {
-		minedBlock.Nonce += 1
+func (miner *Miner) nextCandidateBlock(candidateBlock *bc.Block) {
+	candidateBlock.Nonce += 1
+}
+
+func (miner *Miner) mine() {
+	candidateBlock := miner.firstCandidateBlock()
+
+	for !bc.HashSatisfiesThreshold(candidateBlock, miner.dataForMining.threshold) {
+		miner.nextCandidateBlock(candidateBlock)
 	}
 
 	// send it to the blockchain
