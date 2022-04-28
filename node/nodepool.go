@@ -1,7 +1,6 @@
 package node
 
 import (
-	"context"
 	"sync"
 
 	"blockchainnetwork/node/proto"
@@ -60,5 +59,3 @@ func (cp *GRPCNodeClientPool) GetClient(nodeName string) (proto.NodeClient, erro
 	}
 	return client, nil
 }
-
-func (cp *GRPCNodeClient) GetBlocks(ctx context.Context, in *GetBlocksRequest, opts ...grpc.CallOption) (*GetBlocksResponse, error)
