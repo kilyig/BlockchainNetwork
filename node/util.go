@@ -42,3 +42,7 @@ func BlockchainBlockToProtoBlock(blockchainBlock *bc.Block) *proto.Block {
 		Data:      blockchainBlock.Data,
 	}
 }
+
+func PrintProtoBlock(protoBlock *proto.Block) {
+	bc.PrintBlockchainBlock(ProtoBlockToBlockchainBlock(protoBlock))
+}

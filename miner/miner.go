@@ -3,6 +3,9 @@ package miner
 import (
 	bc "blockchainnetwork/blockchain"
 	node "blockchainnetwork/node"
+	"blockchainnetwork/node/proto"
+	"context"
+	"log"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -32,6 +35,19 @@ func MakeMiner(name string, nodePool node.NodeClientPool) *Miner {
 	}
 
 	// TODO: start the background routine to check for new blocks in target blockchains
+	client, err := miner.nodePool.GetClient("[::1]:8080")
+	if err != nil {
+		log.Fatal("Could not connect to client")
+	}
+
+	ctx := context.Background()
+	req := &proto.GetLastBlockRequest{}
+
+	resp, _ := client.GetLastBlock(ctx, req)
+
+	miner.dataForMining = &DataForMining{
+		lastBlock: node.ProtoBlockToBlockchainBlock(resp.LastBlock),
+	}
 
 	return miner
 }
@@ -50,7 +66,7 @@ func (miner *Miner) nextCandidateBlock(candidateBlock *bc.Block) {
 	candidateBlock.Nonce += 1
 }
 
-func (miner *Miner) mine() {
+func (miner *Miner) Mine() {
 	candidateBlock := miner.firstCandidateBlock()
 
 	for !bc.HashSatisfiesThreshold(candidateBlock, miner.dataForMining.threshold) {
@@ -58,5 +74,29 @@ func (miner *Miner) mine() {
 	}
 
 	// send it to the blockchain
+	miner.sendBlockToNode("[::1]:8080", candidateBlock)
+}
 
+func (miner *Miner) sendBlockToNode(nodeName string, block *bc.Block) {
+	client, err := miner.nodePool.GetClient(nodeName)
+	if err != nil {
+		log.Fatal("Could not connect to client")
+	}
+
+	// choose the parameters
+	ctx := context.Background()
+	req := &proto.AppendBlocksRequest{
+		Blocks: node.BlockchainBlocksToProtoBlocks([]*bc.Block{block}),
+	}
+
+	resp, err := client.AppendBlocks(ctx, req)
+	if err != nil {
+		log.Println("Error contacting node in sendBlockToNode")
+		return
+	}
+	if !resp.Success {
+		log.Println("Block rejected by node")
+	}
+
+	//fmt.Printf("resp.Success: %d, resp.LastBlockHash: %b, resp.LastBlockIndex\n", resp.Success, resp.LastBlockHash, resp.LastBlockIndex)
 }

@@ -4,8 +4,8 @@ import (
 	"flag"
 	"log"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	mnr "blockchainnetwork/miner"
+	nd "blockchainnetwork/node"
 )
 
 var (
@@ -16,25 +16,21 @@ var (
 	)
 )
 
-func serviceConn(address string) (*grpc.ClientConn, error) {
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	return grpc.Dial(address, opts...)
-}
-
 func main() {
 	flag.Parse()
 
 	log.Printf(
-		"starting the miner with flags: --node=%s\n",
+		"starting the miner with flags: --node-addr=%s\n",
 		*loneNodeAddr,
 	)
 
-	nodeConn, err := serviceConn(*loneNodeAddr)
-	if err != nil {
-		log.Fatalf("fail to dial: %v", err)
-	}
-	defer nodeConn.Close()
-	//nodeClient := proto.NewNodeClient(nodeConn)
+	// if err != nil {
+	// 	log.Fatalf("fail to dial: %v", err)
+	// }
+
+	nodePool := nd.MakeGRPCNodeClientPool([]string{*loneNodeAddr})
+	miner := mnr.MakeMiner("tosun_miner", nodePool)
+
+	miner.Mine()
 
 }

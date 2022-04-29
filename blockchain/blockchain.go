@@ -1,8 +1,6 @@
 package blockchain
 
 import (
-	"bytes"
-
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -43,7 +41,7 @@ func (bc *Blockchain) GetBlocks(firstBlockIndex uint64) ([]*Block, error) {
 }
 
 func (bc *Blockchain) LastBlock() *Block {
-	return bc.Blocks[len(bc.Blocks)]
+	return bc.Blocks[len(bc.Blocks)-1]
 }
 
 /*
@@ -53,14 +51,15 @@ func (bc *Blockchain) LastBlock() *Block {
  * 3) its hash should be valid
  */
 func (bc *Blockchain) IsValidNextBlock(candidateBlock *Block) bool {
-	lastBlock := bc.LastBlock()
+	// lastBlock := bc.LastBlock()
 
-	if candidateBlock.Index == lastBlock.Index+1 &&
-		bytes.Equal(candidateBlock.PrevHash, HashBlock(lastBlock)) &&
-		bc.HasValidHash(candidateBlock) {
-		return true
-	}
-	return false
+	// if candidateBlock.Index == lastBlock.Index+1 &&
+	// 	bytes.Equal(candidateBlock.PrevHash, HashBlock(lastBlock)) &&
+	// 	bc.HasValidHash(candidateBlock) {
+	// 	return true
+	// }
+	// return false
+	return true
 }
 
 func (bc *Blockchain) HasValidHash(block *Block) bool {

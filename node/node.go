@@ -6,10 +6,12 @@ import (
 	proto "blockchainnetwork/node/proto"
 	"context"
 
-	"google.golang.org/grpc"
+	"github.com/sirupsen/logrus"
 )
 
 type Node struct {
+	proto.UnimplementedNodeServer
+
 	// node identification
 	name string
 
@@ -33,7 +35,7 @@ func MakeNode(name string, nodePool NodeClientPool) *Node {
 	return node
 }
 
-func (n *Node) GetBlocks(ctx context.Context, req *proto.GetBlocksRequest, opts ...grpc.CallOption) (*proto.GetBlocksResponse, error) {
+func (n *Node) GetBlocks(ctx context.Context, req *proto.GetBlocksRequest) (*proto.GetBlocksResponse, error) {
 	blocks, err := n.blockchain.GetBlocks(req.GetFirstBlockIndex())
 
 	if err != nil {
@@ -51,7 +53,14 @@ func (n *Node) isValidNextBlock(block *proto.Block) bool {
 	return n.blockchain.IsValidNextBlock(ProtoBlockToBlockchainBlock(block))
 }
 
-func (n *Node) AppendBlocks(ctx context.Context, req *proto.AppendBlocksRequest, opts ...grpc.CallOption) (*proto.AppendBlocksResponse, error) {
+func (n *Node) AppendBlocks(ctx context.Context, req *proto.AppendBlocksRequest) (*proto.AppendBlocksResponse, error) {
+
+	// logrus.WithFields(logrus.Fields{
+	// 	"animal": "walrus",
+	// 	"size":   10,
+	// }).Info("A group of walrus emerges from the ocean")
+
+	logrus.Info("A group of walrus emerges from the ocean")
 
 	added_all_blocks := true
 	for _, newBlock := range req.GetBlocks() {
@@ -72,7 +81,7 @@ func (n *Node) AppendBlocks(ctx context.Context, req *proto.AppendBlocksRequest,
 
 }
 
-func (n *Node) GetLastBlock(ctx context.Context, req *proto.GetLastBlockRequest, opts ...grpc.CallOption) (*proto.GetLastBlockResponse, error) {
+func (n *Node) GetLastBlock(ctx context.Context, req *proto.GetLastBlockRequest) (*proto.GetLastBlockResponse, error) {
 	return &proto.GetLastBlockResponse{
 		LastBlock: BlockchainBlockToProtoBlock(n.blockchain.LastBlock()),
 	}, nil
