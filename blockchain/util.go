@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -19,10 +20,13 @@ func HashBlock(block *Block) []byte {
 	return SHA256(blockBytes)
 }
 
-// checks if the hash of block is less than or equal to the threshold
-func HashSatisfiesThreshold(block *Block, threshold []byte) bool {
-	return true
-	//return bytes.Compare(HashBlock(block), threshold) != 1
+func HashSatisfiesThreshold(data []byte, threshold []byte) bool {
+	return bytes.Compare(data, threshold) < 1
+}
+
+// checks if the hash of block is less than the threshold
+func BlockHashSatisfiesThreshold(block *Block, threshold []byte) bool {
+	return bytes.Compare(HashBlock(block), threshold) != 1
 }
 
 func PrintBlockchainBlock(block *Block) {

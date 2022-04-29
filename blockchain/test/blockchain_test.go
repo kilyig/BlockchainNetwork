@@ -36,6 +36,8 @@ func TestHashSatisfiesThreshold(t *testing.T) {
 	dummyWord := "dummy"
 	dummyWordBytes, err := json.Marshal(dummyWord)
 	if err == nil {
-		assert.False(t, bc.HashSatisfiesThreshold(dummyWordBytes, lowestThreshold))
+		assert.False(t, bc.HashSatisfiesThreshold([]byte(dummyWordBytes), lowestThreshold))
 	}
+
+	fmt.Printf("%x\n", bc.SHA256([]byte(dummyWord)))
 }
