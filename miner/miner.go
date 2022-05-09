@@ -6,6 +6,7 @@ import (
 	"blockchainnetwork/node/proto"
 	"context"
 	"log"
+	"sync"
 	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -16,6 +17,10 @@ const (
 )
 
 type Miner struct {
+	mu sync.RWMutex
+
+	mineDelay time.Duration
+
 	// miner identification
 	name string
 
@@ -34,12 +39,13 @@ type DataForMining struct {
 	threshold      []byte
 }
 
-func MakeMiner(name string, nodePool node.NodeClientPool, nodes []string) *Miner {
+func MakeMiner(name string, nodePool node.NodeClientPool, nodes []string, mineDelay uint64) *Miner {
 
 	miner := &Miner{
-		name:     name,
-		nodePool: nodePool,
-		nodes:    make(map[string]struct{}),
+		name:      name,
+		nodePool:  nodePool,
+		nodes:     make(map[string]struct{}),
+		mineDelay: time.Duration(mineDelay) * time.Nanosecond,
 	}
 
 	// add the nodes to the local registry
@@ -84,8 +90,8 @@ func (miner *Miner) updateDataForMining() {
 	req := &proto.AppendBlocksRequest{
 		Blocks: make([]*proto.Block, 0),
 	}
-	resp, err := client.AppendBlocks(ctx, req)
 
+	resp, err := client.AppendBlocks(ctx, req)
 	if err == nil {
 		miner.handleAppendBlocksResponse(resp)
 	}
@@ -96,8 +102,11 @@ func (miner *Miner) nextCandidateBlock(candidateBlock *bc.Block) {
 }
 
 func (miner *Miner) MineContinuously() {
-	for {
+	i := 5
+	k := 0
+	for k < i {
 		miner.MineOneBlock()
+		k += 1
 	}
 }
 
@@ -107,6 +116,7 @@ func (miner *Miner) MineOneBlock() {
 	log.Printf("(miner: %s) Mining a block with index %d", miner.name, candidateBlock.Index)
 
 	for !bc.BlockHashSatisfiesThreshold(candidateBlock, miner.dataForMining.threshold) {
+		time.Sleep(miner.mineDelay)
 		miner.nextCandidateBlock(candidateBlock)
 	}
 	//fmt.Printf("valid hash: %x\n", bc.HashBlock(candidateBlock))
@@ -116,9 +126,17 @@ func (miner *Miner) MineOneBlock() {
 }
 
 func (miner *Miner) sendBlockToNetwork(block *bc.Block) {
+	wg := new(sync.WaitGroup)
+
 	for node := range miner.nodes {
-		miner.sendBlockToNode(node, block)
+		wg.Add(1)
+		go func(nodeName string) {
+			miner.sendBlockToNode(nodeName, block)
+			wg.Done()
+		}(node)
 	}
+
+	wg.Wait()
 }
 
 func (miner *Miner) sendBlockToNode(nodeName string, block *bc.Block) {
@@ -149,10 +167,17 @@ func (miner *Miner) sendBlockToNode(nodeName string, block *bc.Block) {
 }
 
 func (miner *Miner) handleAppendBlocksResponse(resp *proto.AppendBlocksResponse) {
-	miner.dataForMining = &DataForMining{
-		lastBlockIndex: resp.LastBlockIndex,
-		lastBlockHash:  resp.LastBlockHash,
-		threshold:      []byte{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	miner.mu.Lock()
+	defer miner.mu.Unlock()
+
+	// if the blockchain is longer than what you think, continue building on
+	// that blockchain
+	if miner.dataForMining == nil || resp.LastBlockIndex > miner.dataForMining.lastBlockIndex {
+		miner.dataForMining = &DataForMining{
+			lastBlockIndex: resp.LastBlockIndex,
+			lastBlockHash:  resp.LastBlockHash,
+			threshold:      []byte{0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		}
 	}
 	// TODO: will be "miner.dataForMining.threshold = resp.Threshold" after updating the .proto file
 }

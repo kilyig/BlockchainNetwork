@@ -14,6 +14,12 @@ var (
 		"tosun",
 		"The name of the miner",
 	)
+
+	mineDelay = flag.Int(
+		"mine-delay",
+		0,
+		"Delay coefficient for the mining process",
+	)
 )
 
 func main() {
@@ -21,14 +27,15 @@ func main() {
 	nodeAddrs := flag.Args()
 
 	log.Printf(
-		"starting the miner with flag: --miner-name=%s\n",
+		"starting the miner with flag: --miner-name=%s, --mine-delay=%d\n",
 		*minerName,
+		*mineDelay,
 	)
 
 	log.Println(nodeAddrs)
 
 	nodePool := nd.MakeGRPCNodeClientPool(nodeAddrs)
-	miner := mnr.MakeMiner(*minerName, nodePool, nodeAddrs)
+	miner := mnr.MakeMiner(*minerName, nodePool, nodeAddrs, uint64(*mineDelay))
 
 	miner.MineContinuously()
 }
