@@ -17,22 +17,33 @@ type Node struct {
 
 	// connections to nodes that this node is in communication with
 	nodePool NodeClientPool
+	nodes    map[string]struct{}
 
 	// this node's blockchain
 	blockchain *blockchain.Blockchain
 }
 
-func MakeNode(name string, nodePool NodeClientPool) *Node {
+func MakeNode(name string, nodePool NodeClientPool, nodes []string) *Node {
 
 	node := &Node{
 		name:       name,
 		nodePool:   nodePool,
 		blockchain: blockchain.MakeBlockchain(),
+		nodes:      make(map[string]struct{}),
+	}
+
+	// add the nodes to the local registry
+	for _, neighborNode := range nodes {
+		node.addNode(neighborNode)
 	}
 
 	// TODO: start the background routine to check for new blocks in other nodes
 
 	return node
+}
+
+func (n *Node) addNode(nodeName string) {
+	n.nodes[nodeName] = struct{}{}
 }
 
 func (n *Node) GetBlocks(ctx context.Context, req *proto.GetBlocksRequest) (*proto.GetBlocksResponse, error) {

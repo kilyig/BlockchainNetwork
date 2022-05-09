@@ -21,6 +21,7 @@ type Miner struct {
 
 	// the nodes that the miner is in communication with
 	nodePool node.NodeClientPool
+	nodes    map[string]struct{}
 
 	// data necessary to mine the next block
 	dataForMining *DataForMining
@@ -33,17 +34,27 @@ type DataForMining struct {
 	threshold      []byte
 }
 
-func MakeMiner(name string, nodePool node.NodeClientPool) *Miner {
+func MakeMiner(name string, nodePool node.NodeClientPool, nodes []string) *Miner {
 
 	miner := &Miner{
 		name:     name,
 		nodePool: nodePool,
+		nodes:    make(map[string]struct{}),
+	}
+
+	// add the nodes to the local registry
+	for _, neighborNode := range nodes {
+		miner.addNode(neighborNode)
 	}
 
 	miner.updateDataForMining()
 	go miner.updateDataForMiningDaemon()
 
 	return miner
+}
+
+func (miner *Miner) addNode(nodeName string) {
+	miner.nodes[nodeName] = struct{}{}
 }
 
 func (miner *Miner) firstCandidateBlock() *bc.Block {
@@ -105,7 +116,9 @@ func (miner *Miner) MineOneBlock() {
 }
 
 func (miner *Miner) sendBlockToNetwork(block *bc.Block) {
-	miner.sendBlockToNode("[::1]:8080", block)
+	for node := range miner.nodes {
+		miner.sendBlockToNode(node, block)
+	}
 }
 
 func (miner *Miner) sendBlockToNode(nodeName string, block *bc.Block) {
@@ -126,9 +139,9 @@ func (miner *Miner) sendBlockToNode(nodeName string, block *bc.Block) {
 		return
 	}
 	if resp.Success {
-		log.Printf("(miner: %s) Block accepted by node\n", miner.name)
+		log.Printf("(miner: %s) Block accepted by node %s\n", miner.name, nodeName)
 	} else {
-		log.Printf("(miner: %s) Block rejected by node\n", miner.name)
+		log.Printf("(miner: %s) Block rejected by node %s\n", miner.name, nodeName)
 	}
 
 	//update your mining data no matter what
@@ -139,7 +152,7 @@ func (miner *Miner) handleAppendBlocksResponse(resp *proto.AppendBlocksResponse)
 	miner.dataForMining = &DataForMining{
 		lastBlockIndex: resp.LastBlockIndex,
 		lastBlockHash:  resp.LastBlockHash,
-		threshold:      []byte{0, 0, 127, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		threshold:      []byte{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	}
 	// TODO: will be "miner.dataForMining.threshold = resp.Threshold" after updating the .proto file
 }

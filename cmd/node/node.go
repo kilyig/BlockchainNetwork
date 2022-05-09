@@ -37,7 +37,7 @@ func main() {
 	s := grpc.NewServer()
 	proto.RegisterNodeServer(
 		s,
-		nd.MakeNode("tosun_node", nodePool),
+		nd.MakeNode("tosun_node", nodePool, []string{*nodeAddr}),
 	)
 
 	log.Printf("server listening at %v", lis.Addr())
