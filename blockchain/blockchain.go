@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"bytes"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -22,17 +23,29 @@ type Block struct {
 }
 
 func MakeBlockchain() *Blockchain {
+
+	blockchain := &Blockchain{
+		Blocks:    make([]*Block, 0),
+		threshold: []byte{0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	}
+
 	// the initial blockchain has only the genesis block
-	blocks := make([]*Block, 0)
-	blocks = append(blocks, &Block{
+	genesisBlock := &Block{
 		Index:     0,
 		PrevHash:  make([]byte, 32), // SHA256 outputs have 32 bytes
-		Timestamp: timestamppb.Now(),
+		Timestamp: timestamppb.New(time.Time{}),
 		Data:      "",
-	})
-	return &Blockchain{
-		Blocks:    blocks,
-		threshold: []byte{0, 0, 127, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		Nonce:     0,
+	}
+	blockchain.findValidNonce(genesisBlock, blockchain.threshold)
+	blockchain.Blocks = append(blockchain.Blocks, genesisBlock)
+
+	return blockchain
+}
+
+func (bc *Blockchain) findValidNonce(block *Block, threshold []byte) {
+	for !BlockHashSatisfiesThreshold(block, threshold) {
+		block.Nonce += 1
 	}
 }
 

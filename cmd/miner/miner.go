@@ -9,34 +9,33 @@ import (
 )
 
 var (
-	loneNodeAddr = flag.String(
-		"node-addr",
-		"[::1]:8080",
-		"The address for the lonely node",
-	)
-
 	minerName = flag.String(
 		"miner-name",
 		"tosun",
 		"The name of the miner",
 	)
+
+	mineDelay = flag.Int(
+		"mine-delay",
+		0,
+		"Delay coefficient for the mining process",
+	)
 )
 
 func main() {
 	flag.Parse()
+	nodeAddrs := flag.Args()
 
 	log.Printf(
-		"starting the miner with flags: --node-addr=%s, --miner-name=%s\n",
-		*loneNodeAddr,
+		"starting the miner with flag: --miner-name=%s, --mine-delay=%d\n",
 		*minerName,
+		*mineDelay,
 	)
 
-	// if err != nil {
-	// 	log.Fatalf("fail to dial: %v", err)
-	// }
+	log.Println(nodeAddrs)
 
-	nodePool := nd.MakeGRPCNodeClientPool([]string{*loneNodeAddr})
-	miner := mnr.MakeMiner(*minerName, nodePool)
+	nodePool := nd.MakeGRPCNodeClientPool(nodeAddrs)
+	miner := mnr.MakeMiner(*minerName, nodePool, nodeAddrs, uint64(*mineDelay))
 
 	miner.MineContinuously()
 }
