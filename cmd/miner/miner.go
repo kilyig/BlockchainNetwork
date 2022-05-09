@@ -38,6 +38,5 @@ func main() {
 	nodePool := nd.MakeGRPCNodeClientPool([]string{*loneNodeAddr})
 	miner := mnr.MakeMiner(*minerName, nodePool)
 
-	miner.Mine()
-
+	miner.MineContinuously()
 }

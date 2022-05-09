@@ -30,7 +30,7 @@ func MakeNode(name string, nodePool NodeClientPool) *Node {
 		blockchain: blockchain.MakeBlockchain(),
 	}
 
-	// TODO: start the background routine to check for new blocks in target blockchains
+	// TODO: start the background routine to check for new blocks in other nodes
 
 	return node
 }
@@ -60,8 +60,6 @@ func (n *Node) AppendBlocks(ctx context.Context, req *proto.AppendBlocksRequest)
 	// 	"size":   10,
 	// }).Info("A group of walrus emerges from the ocean")
 
-	logrus.Info("A group of walrus emerges from the ocean")
-
 	added_all_blocks := true
 	for _, newBlock := range req.GetBlocks() {
 		if n.isValidNextBlock(newBlock) {
@@ -70,6 +68,10 @@ func (n *Node) AppendBlocks(ctx context.Context, req *proto.AppendBlocksRequest)
 			added_all_blocks = false
 			break
 		}
+	}
+
+	if added_all_blocks && len(req.GetBlocks()) != 0 {
+		logrus.Infof("Added block #%d with data: %s\n", req.GetBlocks()[0].Index, req.GetBlocks()[0].Data)
 	}
 
 	newLastBlock := n.blockchain.LastBlock()

@@ -31,7 +31,8 @@ func MakeBlockchain() *Blockchain {
 		Data:      "",
 	})
 	return &Blockchain{
-		Blocks: blocks,
+		Blocks:    blocks,
+		threshold: []byte{0, 0, 127, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	}
 }
 
@@ -64,7 +65,7 @@ func (bc *Blockchain) IsValidNextBlock(candidateBlock *Block) bool {
 }
 
 func (bc *Blockchain) HasValidHash(block *Block) bool {
-	return true
+	return BlockHashSatisfiesThreshold(block, bc.threshold)
 }
 
 func (bc *Blockchain) AddBlock(newBlock *Block) (uint64, bool) {
