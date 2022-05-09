@@ -14,14 +14,21 @@ var (
 		"[::1]:8080",
 		"The address for the lonely node",
 	)
+
+	minerName = flag.String(
+		"miner-name",
+		"tosun",
+		"The name of the miner",
+	)
 )
 
 func main() {
 	flag.Parse()
 
 	log.Printf(
-		"starting the miner with flags: --node-addr=%s\n",
+		"starting the miner with flags: --node-addr=%s, --miner-name=%s\n",
 		*loneNodeAddr,
+		*minerName,
 	)
 
 	// if err != nil {
@@ -29,7 +36,7 @@ func main() {
 	// }
 
 	nodePool := nd.MakeGRPCNodeClientPool([]string{*loneNodeAddr})
-	miner := mnr.MakeMiner("tosun_miner", nodePool)
+	miner := mnr.MakeMiner(*minerName, nodePool)
 
 	miner.Mine()
 

@@ -40,13 +40,13 @@ func MakeMiner(name string, nodePool node.NodeClientPool) *Miner {
 		log.Fatal("Could not connect to client")
 	}
 
+	// get the mining data from the nodes
 	ctx := context.Background()
 	req := &proto.GetLastBlockRequest{}
-
 	resp, _ := client.GetLastBlock(ctx, req)
-
 	miner.dataForMining = &DataForMining{
 		lastBlock: node.ProtoBlockToBlockchainBlock(resp.LastBlock),
+		threshold: []byte{0, 0, 127, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	}
 
 	return miner
@@ -55,7 +55,7 @@ func MakeMiner(name string, nodePool node.NodeClientPool) *Miner {
 func (miner *Miner) firstCandidateBlock() *bc.Block {
 	return &bc.Block{
 		Index:     miner.dataForMining.lastBlock.Index + 1,
-		PrevHash:  miner.dataForMining.lastBlock.PrevHash,
+		PrevHash:  bc.HashBlock(miner.dataForMining.lastBlock),
 		Timestamp: timestamppb.Now(),
 		Nonce:     uint64(0),
 		Data:      "Block mined by " + miner.name,
@@ -69,9 +69,12 @@ func (miner *Miner) nextCandidateBlock(candidateBlock *bc.Block) {
 func (miner *Miner) Mine() {
 	candidateBlock := miner.firstCandidateBlock()
 
-	for !bc.HashSatisfiesThreshold(candidateBlock, miner.dataForMining.threshold) {
+	log.Printf("(miner: %s) Mining a block with index %d", miner.name, candidateBlock.Index)
+
+	for !bc.BlockHashSatisfiesThreshold(candidateBlock, miner.dataForMining.threshold) {
 		miner.nextCandidateBlock(candidateBlock)
 	}
+	//fmt.Printf("valid hash: %x\n", bc.HashBlock(candidateBlock))
 
 	// send it to the blockchain
 	miner.sendBlockToNode("[::1]:8080", candidateBlock)
@@ -94,9 +97,10 @@ func (miner *Miner) sendBlockToNode(nodeName string, block *bc.Block) {
 		log.Println("Error contacting node in sendBlockToNode")
 		return
 	}
-	if !resp.Success {
-		log.Println("Block rejected by node")
+	if resp.Success {
+		log.Printf("(miner: %s) Block accepted by node\n", miner.name)
+	} else {
+		log.Printf("(miner: %s) Block rejected by node\n", miner.name)
 	}
 
-	//fmt.Printf("resp.Success: %d, resp.LastBlockHash: %b, resp.LastBlockIndex\n", resp.Success, resp.LastBlockHash, resp.LastBlockIndex)
 }

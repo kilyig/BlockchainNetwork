@@ -31,6 +31,7 @@ func BlockHashSatisfiesThreshold(block *Block, threshold []byte) bool {
 
 func PrintBlockchainBlock(block *Block) {
 	fmt.Printf("Index: %d\n", block.Index)
+	fmt.Printf("	Hash: %d \n", HashBlock(block))
 	fmt.Printf("	PrevHash: %d \n", block.PrevHash)
 	fmt.Printf("	Timestamp: %d\n", block.Timestamp.Seconds)
 	fmt.Printf("	Nonce: %d\n", block.Nonce)
