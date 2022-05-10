@@ -32,8 +32,6 @@ func main() {
 		*mineDelay,
 	)
 
-	log.Println(nodeAddrs)
-
 	nodePool := nd.MakeGRPCNodeClientPool(nodeAddrs)
 	miner := mnr.MakeMiner(*minerName, nodePool, nodeAddrs, uint64(*mineDelay))
 

@@ -23,7 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type NodeClient interface {
 	GetBlocks(ctx context.Context, in *GetBlocksRequest, opts ...grpc.CallOption) (*GetBlocksResponse, error)
-	AppendBlocks(ctx context.Context, in *AppendBlocksRequest, opts ...grpc.CallOption) (*AppendBlocksResponse, error)
+	AddBlocks(ctx context.Context, in *AddBlocksRequest, opts ...grpc.CallOption) (*AddBlocksResponse, error)
 	GetLastBlock(ctx context.Context, in *GetLastBlockRequest, opts ...grpc.CallOption) (*GetLastBlockResponse, error)
 }
 
@@ -44,9 +44,9 @@ func (c *nodeClient) GetBlocks(ctx context.Context, in *GetBlocksRequest, opts .
 	return out, nil
 }
 
-func (c *nodeClient) AppendBlocks(ctx context.Context, in *AppendBlocksRequest, opts ...grpc.CallOption) (*AppendBlocksResponse, error) {
-	out := new(AppendBlocksResponse)
-	err := c.cc.Invoke(ctx, "/node.Node/AppendBlocks", in, out, opts...)
+func (c *nodeClient) AddBlocks(ctx context.Context, in *AddBlocksRequest, opts ...grpc.CallOption) (*AddBlocksResponse, error) {
+	out := new(AddBlocksResponse)
+	err := c.cc.Invoke(ctx, "/node.Node/AddBlocks", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func (c *nodeClient) GetLastBlock(ctx context.Context, in *GetLastBlockRequest, 
 // for forward compatibility
 type NodeServer interface {
 	GetBlocks(context.Context, *GetBlocksRequest) (*GetBlocksResponse, error)
-	AppendBlocks(context.Context, *AppendBlocksRequest) (*AppendBlocksResponse, error)
+	AddBlocks(context.Context, *AddBlocksRequest) (*AddBlocksResponse, error)
 	GetLastBlock(context.Context, *GetLastBlockRequest) (*GetLastBlockResponse, error)
 	mustEmbedUnimplementedNodeServer()
 }
@@ -79,8 +79,8 @@ type UnimplementedNodeServer struct {
 func (UnimplementedNodeServer) GetBlocks(context.Context, *GetBlocksRequest) (*GetBlocksResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetBlocks not implemented")
 }
-func (UnimplementedNodeServer) AppendBlocks(context.Context, *AppendBlocksRequest) (*AppendBlocksResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AppendBlocks not implemented")
+func (UnimplementedNodeServer) AddBlocks(context.Context, *AddBlocksRequest) (*AddBlocksResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddBlocks not implemented")
 }
 func (UnimplementedNodeServer) GetLastBlock(context.Context, *GetLastBlockRequest) (*GetLastBlockResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLastBlock not implemented")
@@ -116,20 +116,20 @@ func _Node_GetBlocks_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Node_AppendBlocks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AppendBlocksRequest)
+func _Node_AddBlocks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddBlocksRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(NodeServer).AppendBlocks(ctx, in)
+		return srv.(NodeServer).AddBlocks(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/node.Node/AppendBlocks",
+		FullMethod: "/node.Node/AddBlocks",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeServer).AppendBlocks(ctx, req.(*AppendBlocksRequest))
+		return srv.(NodeServer).AddBlocks(ctx, req.(*AddBlocksRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -164,8 +164,8 @@ var Node_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Node_GetBlocks_Handler,
 		},
 		{
-			MethodName: "AppendBlocks",
-			Handler:    _Node_AppendBlocks_Handler,
+			MethodName: "AddBlocks",
+			Handler:    _Node_AddBlocks_Handler,
 		},
 		{
 			MethodName: "GetLastBlock",
