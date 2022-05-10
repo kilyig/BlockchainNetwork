@@ -21,6 +21,7 @@ var (
 
 func main() {
 	flag.Parse()
+	nodeAddrs := flag.Args()
 
 	log.Printf(
 		"starting the node with flags: --node-addr=%s\n",
@@ -33,11 +34,11 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	nodePool := nd.MakeGRPCNodeClientPool([]string{*nodeAddr})
+	nodePool := nd.MakeGRPCNodeClientPool(nodeAddrs)
 	s := grpc.NewServer()
 	proto.RegisterNodeServer(
 		s,
-		nd.MakeNode("tosun_node", nodePool, []string{*nodeAddr}),
+		nd.MakeNode("tosun_node", nodePool, nodeAddrs),
 	)
 
 	log.Printf("server listening at %v", lis.Addr())

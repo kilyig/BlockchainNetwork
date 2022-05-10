@@ -77,14 +77,68 @@ func (bc *Blockchain) IsValidNextBlock(candidateBlock *Block) bool {
 	return false
 }
 
+func (bc *Blockchain) IsValidBlock(candidateBlock *Block) bool {
+	// the block is invalid if its index is higher than the index of the next
+	// block that the blockchain can currently accept
+	if candidateBlock.Index > bc.LastBlock().Index+1 {
+		return false
+	}
+
+	prevBlock := bc.GetBlock(candidateBlock.Index - 1)
+
+	if candidateBlock.Index == prevBlock.Index+1 &&
+		bytes.Equal(candidateBlock.PrevHash, HashBlock(prevBlock)) &&
+		bc.HasValidHash(candidateBlock) {
+		return true
+	}
+	return false
+}
+
+func (bc *Blockchain) GetBlock(index uint64) *Block {
+	if index < uint64(len(bc.Blocks)) {
+		return bc.Blocks[index]
+	}
+	return nil
+}
+
 func (bc *Blockchain) HasValidHash(block *Block) bool {
 	return BlockHashSatisfiesThreshold(block, bc.threshold)
 }
 
-func (bc *Blockchain) AddBlock(newBlock *Block) (uint64, bool) {
+func (bc *Blockchain) AppendBlock(newBlock *Block) (uint64, bool) {
 	if bc.IsValidNextBlock(newBlock) {
 		bc.Blocks = append(bc.Blocks, newBlock)
 		return uint64(len(bc.Blocks)), true
 	}
 	return uint64(len(bc.Blocks)), false
+}
+
+func (bc *Blockchain) AddBlocks(newBlocks []*Block) (uint64, bool) {
+	if len(newBlocks) == 0 {
+		return bc.LastBlock().Index, true
+	}
+
+	// find the last block that can be added
+	validBlockFound := false
+	lastValidBlockIndex := newBlocks[0].Index
+	for _, block := range newBlocks {
+		if bc.IsValidBlock(block) {
+			validBlockFound = true
+			lastValidBlockIndex = block.Index
+		}
+	}
+
+	// proceed only if (a) there was at least one valid block
+	// (b) the valid blocks, when added to the blockchain, make
+	// the blockchain longer than what it currently is
+	if !validBlockFound || lastValidBlockIndex <= bc.LastBlock().Index {
+		return bc.LastBlock().Index, false
+	}
+
+	// trim the blockchain and add the new ones
+	firstNewBlockIndex := newBlocks[0].Index
+	bc.Blocks = bc.Blocks[:firstNewBlockIndex]
+	bc.Blocks = append(bc.Blocks, newBlocks...)
+
+	return bc.LastBlock().Index, true
 }

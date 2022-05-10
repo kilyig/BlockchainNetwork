@@ -4,9 +4,14 @@ import (
 	"blockchainnetwork/blockchain"
 	bc "blockchainnetwork/blockchain"
 	proto "blockchainnetwork/node/proto"
+	"bytes"
 	"context"
+	"log"
+	"time"
+)
 
-	"github.com/sirupsen/logrus"
+const (
+	daemonTimeDelta = 5 * time.Second // for the ticker
 )
 
 type Node struct {
@@ -37,13 +42,58 @@ func MakeNode(name string, nodePool NodeClientPool, nodes []string) *Node {
 		node.addNode(neighborNode)
 	}
 
-	// TODO: start the background routine to check for new blocks in other nodes
+	// start the background routine to check for new blocks in other nodes
+	go node.syncBlockchainDaemon()
 
 	return node
 }
 
 func (n *Node) addNode(nodeName string) {
 	n.nodes[nodeName] = struct{}{}
+}
+
+func (n *Node) syncBlockchainDaemon() {
+	for {
+		time.Sleep(daemonTimeDelta)
+		n.syncWithNetwork()
+	}
+}
+
+func (n *Node) syncWithNetwork() {
+	for node := range n.nodes {
+		go func(nodeName string) {
+			n.syncWithNode(nodeName)
+		}(node)
+	}
+}
+
+func (n *Node) syncWithNode(nodeName string) {
+	client, err := n.nodePool.GetClient(nodeName)
+	if err != nil {
+		log.Fatal("Could not connect to client")
+	}
+
+	// prepare the request
+	ctx := context.Background()
+	allBlocks, err := n.blockchain.GetBlocks(1)
+	if err != nil {
+		return
+	}
+	req := &proto.AddBlocksRequest{
+		Blocks:         BlockchainBlocksToProtoBlocks(allBlocks),
+		PrevBlockIndex: 0,
+		PrevBlockHash:  bc.HashBlock(n.blockchain.GetBlock(0)),
+	}
+
+	// send the RPC and process the reply
+	resp, err := client.AddBlocks(ctx, req)
+	if err == nil {
+		n.handleAddBlocksResponse(resp)
+	}
+}
+
+func (n *Node) handleAddBlocksResponse(resp *proto.AddBlocksResponse) {
+
 }
 
 func (n *Node) GetBlocks(ctx context.Context, req *proto.GetBlocksRequest) (*proto.GetBlocksResponse, error) {
@@ -60,38 +110,27 @@ func (n *Node) GetBlocks(ctx context.Context, req *proto.GetBlocksRequest) (*pro
 	}, nil
 }
 
-func (n *Node) isValidNextBlock(block *proto.Block) bool {
-	return n.blockchain.IsValidNextBlock(ProtoBlockToBlockchainBlock(block))
-}
+func (n *Node) AddBlocks(ctx context.Context, req *proto.AddBlocksRequest) (*proto.AddBlocksResponse, error) {
+	lastAddedBlockIndex, ok := n.blockchain.AddBlocks(ProtoBlocksToBlockchainBlocks(req.Blocks))
 
-func (n *Node) AppendBlocks(ctx context.Context, req *proto.AppendBlocksRequest) (*proto.AppendBlocksResponse, error) {
-
-	// logrus.WithFields(logrus.Fields{
-	// 	"animal": "walrus",
-	// 	"size":   10,
-	// }).Info("A group of walrus emerges from the ocean")
-
-	added_all_blocks := true
-	for _, newBlock := range req.GetBlocks() {
-		if n.isValidNextBlock(newBlock) {
-			n.blockchain.AddBlock(ProtoBlockToBlockchainBlock(newBlock))
-		} else {
-			added_all_blocks = false
-			break
-		}
+	if ok && len(req.Blocks) != 0 {
+		log.Printf("Added blocks from #%d to #%d with data: %s\n", req.GetBlocks()[0].Index, lastAddedBlockIndex, req.GetBlocks()[0].Data)
 	}
 
-	if added_all_blocks && len(req.GetBlocks()) != 0 {
-		logrus.Infof("Added block #%d with data: %s\n", req.GetBlocks()[0].Index, req.GetBlocks()[0].Data)
+	// the request is successfull if this blockchain agrees with the Prev fields
+	// in the request
+	success := false
+	agreementBlock := n.blockchain.GetBlock(req.PrevBlockIndex)
+	if agreementBlock != nil {
+		success = bytes.Equal(req.PrevBlockHash, bc.HashBlock(agreementBlock))
 	}
 
 	newLastBlock := n.blockchain.LastBlock()
-	return &proto.AppendBlocksResponse{
+	return &proto.AddBlocksResponse{
 		LastBlockIndex: newLastBlock.Index,
 		LastBlockHash:  bc.HashBlock(newLastBlock),
-		Success:        added_all_blocks,
+		Success:        success,
 	}, nil
-
 }
 
 func (n *Node) GetLastBlock(ctx context.Context, req *proto.GetLastBlockRequest) (*proto.GetLastBlockResponse, error) {

@@ -22,14 +22,16 @@ message GetBlocksResponse {
     repeated Block blocks = 1;
 }
 
-message AppendBlocksRequest {
+message AddBlocksRequest {
     repeated Block blocks = 1;
+    uint64 prev_block_index = 2;
+    bytes prev_block_hash = 3;
 }
 
-message AppendBlocksResponse {
+message AddBlocksResponse {
     uint64 last_block_index = 1;
     bytes last_block_hash = 2;
-    bytes threshold = 3
+    bytes threshold = 3;
     bool success = 4;
 }
 
@@ -41,6 +43,6 @@ message GetLastBlockResponse {
 
 service Node {
     rpc GetBlocks(GetBlocksRequest) returns (GetBlocksResponse);
-    rpc AppendBlocks(AppendBlocksRequest) returns (AppendBlocksResponse);
+    rpc AddBlocks(AddBlocksRequest) returns (AddBlocksResponse);
     rpc GetLastBlock(GetLastBlockRequest) returns (GetLastBlockResponse);
 }
