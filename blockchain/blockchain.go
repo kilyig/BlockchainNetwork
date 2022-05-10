@@ -95,7 +95,10 @@ func (bc *Blockchain) IsValidBlock(candidateBlock *Block) bool {
 }
 
 func (bc *Blockchain) GetBlock(index uint64) *Block {
-	return bc.Blocks[index]
+	if index < uint64(len(bc.Blocks)) {
+		return bc.Blocks[index]
+	}
+	return nil
 }
 
 func (bc *Blockchain) HasValidHash(block *Block) bool {

@@ -4,6 +4,7 @@ import (
 	bc "blockchainnetwork/blockchain"
 	node "blockchainnetwork/node"
 	"blockchainnetwork/node/proto"
+	"bytes"
 	"context"
 	"log"
 	"sync"
@@ -15,7 +16,7 @@ import (
 )
 
 const (
-	daemonTimeDelta = 5 * time.Second // for the ticker
+	daemonTimeDelta = 20 * time.Second // for the ticker
 )
 
 type Miner struct {
@@ -166,7 +167,9 @@ func (miner *Miner) sendBlockToNode(nodeName string, block *bc.Block) {
 	// choose the parameters
 	ctx := context.Background()
 	req := &proto.AddBlocksRequest{
-		Blocks: node.BlockchainBlocksToProtoBlocks([]*bc.Block{block}),
+		Blocks:         node.BlockchainBlocksToProtoBlocks([]*bc.Block{block}),
+		PrevBlockIndex: block.Index - 1,
+		PrevBlockHash:  block.PrevHash,
 	}
 
 	resp, err := client.AddBlocks(ctx, req)
@@ -174,7 +177,7 @@ func (miner *Miner) sendBlockToNode(nodeName string, block *bc.Block) {
 		log.Println("Error contacting node in sendBlockToNode")
 		return
 	}
-	if resp.Success {
+	if bytes.Equal(resp.LastBlockHash, bc.HashBlock(block)) {
 		log.Printf("(miner: %s) Block accepted by node %s\n", miner.name, nodeName)
 	} else {
 		log.Printf("(miner: %s) Block rejected by node %s\n", miner.name, nodeName)

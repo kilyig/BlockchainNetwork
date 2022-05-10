@@ -24,6 +24,8 @@ message GetBlocksResponse {
 
 message AddBlocksRequest {
     repeated Block blocks = 1;
+    uint64 prev_block_index = 2;
+    bytes prev_block_hash = 3;
 }
 
 message AddBlocksResponse {

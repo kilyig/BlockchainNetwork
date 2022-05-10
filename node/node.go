@@ -4,6 +4,7 @@ import (
 	"blockchainnetwork/blockchain"
 	bc "blockchainnetwork/blockchain"
 	proto "blockchainnetwork/node/proto"
+	"bytes"
 	"context"
 	"log"
 	"time"
@@ -41,7 +42,8 @@ func MakeNode(name string, nodePool NodeClientPool, nodes []string) *Node {
 		node.addNode(neighborNode)
 	}
 
-	// TODO: start the background routine to check for new blocks in other nodes
+	// start the background routine to check for new blocks in other nodes
+	go node.syncBlockchainDaemon()
 
 	return node
 }
@@ -50,41 +52,49 @@ func (n *Node) addNode(nodeName string) {
 	n.nodes[nodeName] = struct{}{}
 }
 
-// func (n *Node) syncBlockchainDaemon() {
-// 	for {
-// 		time.Sleep(daemonTimeDelta)
-// 		n.syncWithNetwork()
-// 	}
-// }
+func (n *Node) syncBlockchainDaemon() {
+	for {
+		time.Sleep(daemonTimeDelta)
+		n.syncWithNetwork()
+	}
+}
 
-// func (n *Node) syncWithNetwork() {
-// 	for node := range n.nodes {
-// 		go func(nodeName string) {
-// 			n.syncWithNode(nodeName)
-// 		}(node)
-// 	}
-// }
+func (n *Node) syncWithNetwork() {
+	for node := range n.nodes {
+		go func(nodeName string) {
+			n.syncWithNode(nodeName)
+		}(node)
+	}
+}
 
-// func (n *Node) syncWithNode(nodeName string) {
-// 	client, err := n.nodePool.GetClient(nodeName)
-// 	if err != nil {
-// 		log.Fatal("Could not connect to client")
-// 	}
+func (n *Node) syncWithNode(nodeName string) {
+	client, err := n.nodePool.GetClient(nodeName)
+	if err != nil {
+		log.Fatal("Could not connect to client")
+	}
 
-// 	ctx := context.Background()
-// 	req := &proto.AddBlocksRequest{
-// 		Blocks: make([]*proto.Block, 0),
-// 	}
+	// prepare the request
+	ctx := context.Background()
+	allBlocks, err := n.blockchain.GetBlocks(1)
+	if err != nil {
+		return
+	}
+	req := &proto.AddBlocksRequest{
+		Blocks:         BlockchainBlocksToProtoBlocks(allBlocks),
+		PrevBlockIndex: 0,
+		PrevBlockHash:  bc.HashBlock(n.blockchain.GetBlock(0)),
+	}
 
-// 	resp, err := client.AddBlocks(ctx, req)
-// 	if err == nil {
-// 		n.handleAddBlocksResponse(resp)
-// 	}
-// }
+	// send the RPC and process the reply
+	resp, err := client.AddBlocks(ctx, req)
+	if err == nil {
+		n.handleAddBlocksResponse(resp)
+	}
+}
 
-// func (n *Node) handleAddBlocksResponse(resp *proto.AddBlocksResponse) {
+func (n *Node) handleAddBlocksResponse(resp *proto.AddBlocksResponse) {
 
-// }
+}
 
 func (n *Node) GetBlocks(ctx context.Context, req *proto.GetBlocksRequest) (*proto.GetBlocksResponse, error) {
 	blocks, err := n.blockchain.GetBlocks(req.GetFirstBlockIndex())
@@ -107,11 +117,19 @@ func (n *Node) AddBlocks(ctx context.Context, req *proto.AddBlocksRequest) (*pro
 		log.Printf("Added blocks from #%d to #%d with data: %s\n", req.GetBlocks()[0].Index, lastAddedBlockIndex, req.GetBlocks()[0].Data)
 	}
 
+	// the request is successfull if this blockchain agrees with the Prev fields
+	// in the request
+	success := false
+	agreementBlock := n.blockchain.GetBlock(req.PrevBlockIndex)
+	if agreementBlock != nil {
+		success = bytes.Equal(req.PrevBlockHash, bc.HashBlock(agreementBlock))
+	}
+
 	newLastBlock := n.blockchain.LastBlock()
 	return &proto.AddBlocksResponse{
 		LastBlockIndex: newLastBlock.Index,
 		LastBlockHash:  bc.HashBlock(newLastBlock),
-		Success:        ok,
+		Success:        success,
 	}, nil
 }
 
