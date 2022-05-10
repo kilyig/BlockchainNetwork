@@ -5,8 +5,12 @@ import (
 	bc "blockchainnetwork/blockchain"
 	proto "blockchainnetwork/node/proto"
 	"context"
+	"log"
+	"time"
+)
 
-	"github.com/sirupsen/logrus"
+const (
+	daemonTimeDelta = 5 * time.Second // for the ticker
 )
 
 type Node struct {
@@ -46,6 +50,42 @@ func (n *Node) addNode(nodeName string) {
 	n.nodes[nodeName] = struct{}{}
 }
 
+// func (n *Node) syncBlockchainDaemon() {
+// 	for {
+// 		time.Sleep(daemonTimeDelta)
+// 		n.syncWithNetwork()
+// 	}
+// }
+
+// func (n *Node) syncWithNetwork() {
+// 	for node := range n.nodes {
+// 		go func(nodeName string) {
+// 			n.syncWithNode(nodeName)
+// 		}(node)
+// 	}
+// }
+
+// func (n *Node) syncWithNode(nodeName string) {
+// 	client, err := n.nodePool.GetClient(nodeName)
+// 	if err != nil {
+// 		log.Fatal("Could not connect to client")
+// 	}
+
+// 	ctx := context.Background()
+// 	req := &proto.AddBlocksRequest{
+// 		Blocks: make([]*proto.Block, 0),
+// 	}
+
+// 	resp, err := client.AddBlocks(ctx, req)
+// 	if err == nil {
+// 		n.handleAddBlocksResponse(resp)
+// 	}
+// }
+
+// func (n *Node) handleAddBlocksResponse(resp *proto.AddBlocksResponse) {
+
+// }
+
 func (n *Node) GetBlocks(ctx context.Context, req *proto.GetBlocksRequest) (*proto.GetBlocksResponse, error) {
 	blocks, err := n.blockchain.GetBlocks(req.GetFirstBlockIndex())
 
@@ -60,38 +100,19 @@ func (n *Node) GetBlocks(ctx context.Context, req *proto.GetBlocksRequest) (*pro
 	}, nil
 }
 
-func (n *Node) isValidNextBlock(block *proto.Block) bool {
-	return n.blockchain.IsValidNextBlock(ProtoBlockToBlockchainBlock(block))
-}
+func (n *Node) AddBlocks(ctx context.Context, req *proto.AddBlocksRequest) (*proto.AddBlocksResponse, error) {
+	lastAddedBlockIndex, ok := n.blockchain.AddBlocks(ProtoBlocksToBlockchainBlocks(req.Blocks))
 
-func (n *Node) AppendBlocks(ctx context.Context, req *proto.AppendBlocksRequest) (*proto.AppendBlocksResponse, error) {
-
-	// logrus.WithFields(logrus.Fields{
-	// 	"animal": "walrus",
-	// 	"size":   10,
-	// }).Info("A group of walrus emerges from the ocean")
-
-	added_all_blocks := true
-	for _, newBlock := range req.GetBlocks() {
-		if n.isValidNextBlock(newBlock) {
-			n.blockchain.AddBlock(ProtoBlockToBlockchainBlock(newBlock))
-		} else {
-			added_all_blocks = false
-			break
-		}
-	}
-
-	if added_all_blocks && len(req.GetBlocks()) != 0 {
-		logrus.Infof("Added block #%d with data: %s\n", req.GetBlocks()[0].Index, req.GetBlocks()[0].Data)
+	if ok && len(req.Blocks) != 0 {
+		log.Printf("Added blocks from #%d to #%d with data: %s\n", req.GetBlocks()[0].Index, lastAddedBlockIndex, req.GetBlocks()[0].Data)
 	}
 
 	newLastBlock := n.blockchain.LastBlock()
-	return &proto.AppendBlocksResponse{
+	return &proto.AddBlocksResponse{
 		LastBlockIndex: newLastBlock.Index,
 		LastBlockHash:  bc.HashBlock(newLastBlock),
-		Success:        added_all_blocks,
+		Success:        ok,
 	}, nil
-
 }
 
 func (n *Node) GetLastBlock(ctx context.Context, req *proto.GetLastBlockRequest) (*proto.GetLastBlockResponse, error) {
