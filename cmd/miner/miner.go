@@ -18,7 +18,7 @@ var (
 	mineDelay = flag.Int(
 		"mine-delay",
 		0,
-		"Delay coefficient for the mining process",
+		"Delay coefficient for the mining process (in nanoseconds)",
 	)
 )
 
